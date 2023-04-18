@@ -39,8 +39,7 @@ type Config struct {
 type weather struct {
 	clouds     int
 	weatherIDs []int
-	tempMax    float64
-	tempMin    float64
+	temp       float64
 	windSpeed  float64
 }
 
@@ -102,8 +101,7 @@ func (c *Client) getWeatherForZip(zip string) (weather, error) {
 	}
 
 	r.clouds = c.W.Clouds.All
-	r.tempMax = c.W.Main.TempMax
-	r.tempMin = c.W.Main.TempMin
+	r.temp = c.W.Main.Temp
 	r.windSpeed = c.W.Wind.Speed
 	for _, i := range c.W.Weather {
 		r.weatherIDs = append(r.weatherIDs, i.ID)
@@ -117,7 +115,7 @@ func (c *Client) storeData(w weather, z string) error {
 
 	p := influxdb2.NewPoint("stat",
 		map[string]string{"zip": z},
-		map[string]interface{}{"clouds": w.clouds, "temp_max": w.tempMax, "temp_min": w.tempMin, "wind_speed": w.windSpeed, "weather_id": w.weatherIDs[0]},
+		map[string]interface{}{"clouds": w.clouds, "temp": w.temp, "wind_speed": w.windSpeed, "weather_id": w.weatherIDs[0]},
 		time.Now(),
 	)
 
