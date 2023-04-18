@@ -140,6 +140,8 @@ func main() {
 		}
 		if err = c.storeData(w, z); err != nil {
 			fmt.Println("error writing to influx - ", err.Error())
+		} else {
+			fmt.Println("success for ", z)
 		}
 	}
 }
