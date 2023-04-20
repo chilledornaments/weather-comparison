@@ -112,6 +112,7 @@ func (c *Client) getWeatherForZip(zip string) (weather, error) {
 
 func calculatePleasantness(temp float64, wind float64, cloud int) int {
 	var v int
+	// TODO if this logic doesn't work, change the "weather_score" tag to "weather_score_v2"
 
 	// these variable names are awful
 	minBound := 40.0
