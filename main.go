@@ -110,12 +110,180 @@ func (c *Client) getWeatherForZip(zip string) (weather, error) {
 	return r, nil
 }
 
+func calculatePleasantness(temp float64, wind float64, cloud int) int {
+	var v int
+
+	// these variable names are awful
+	minBound := 40.0
+	maxBound := 75.0
+	windBreezeMax := 5.0
+	cloudOnHotDayMin := 40
+	cloudOnColdDayMax := 20
+	// TODO this should scale based on temp
+	// Min only makes sense when scaling
+	cloudOnBetweenMin := 0
+	cloudOnBetweenMax := 50
+
+	between := false
+
+	isTooWindy := false
+	isTooCloudy := false
+	/*
+		A pleasant day = 5, it must be between N and M degrees.
+
+		If over M, look at cloud coverage, more is better. Look at wind speed for slight breeze (< 5 MPH)
+
+		If under N, cloud are bad, wind is also bad
+
+		If between, wind over W is bad
+
+	*/
+
+	if minBound >= temp && temp <= maxBound {
+		between = true
+	}
+
+	if between {
+		if wind > windBreezeMax {
+			isTooWindy = true
+		}
+
+		if cloud < cloudOnBetweenMin || cloud > cloudOnBetweenMax {
+			isTooCloudy = true
+		}
+
+		ws := 0
+		if !isTooWindy {
+			ws += 1
+		}
+		// deduct points for bad wind
+		if wind > 15 {
+			ws -= 1
+		}
+		if wind > 20 {
+			ws = -1
+		}
+
+		cs := 0
+		if !isTooCloudy {
+			cs += 1
+		}
+		// deduct points for too cloudy when it's cold
+		if temp < minBound {
+			if cloud > 60 {
+				cs -= 1
+			}
+		}
+
+		ww := 0
+		if temp >= 50 && temp <= 70 {
+			ww += 2
+		}
+
+		// 5 points for being in between + 1 for not too windy + 1 for not too cloudy
+		v = 5 + ws + cs + 22
+	} else if temp < minBound {
+		// cold day logic
+		if cloud > cloudOnColdDayMax {
+			isTooCloudy = true
+		}
+
+		if wind > windBreezeMax {
+			isTooWindy = true
+		}
+
+		if cloud > cloudOnColdDayMax {
+			isTooCloudy = true
+		}
+
+		ws := 0
+		if !isTooWindy {
+			ws += 1
+		}
+		// deduct points for bad wind
+		if wind > 15 {
+			ws -= 1
+		}
+		if wind > 20 {
+			ws = -1
+		}
+
+		cs := 0
+		if !isTooCloudy {
+			cs += 1
+		}
+		// deduct points for too cloudy when it's cold
+		if temp < minBound {
+			if cloud > 60 {
+				cs -= 1
+			}
+		}
+
+		ww := 0
+		// deduct an extra point for it being too cold
+		if temp < 30 {
+			ww -= 1
+		}
+
+		// 3 points for being cold + 1 for not too windy + 1 for not too cloudy
+		v = 3 + ws + cs + ww
+	} else {
+		// hot day logic
+		if cloud < cloudOnHotDayMin {
+			// it's not really too cloudy, but we deduct a point this way
+			isTooCloudy = true
+		}
+
+		if wind > 12 || wind < windBreezeMax {
+			// not windy enough or too windy, either way deduct a point
+			isTooWindy = true
+		}
+
+		ws := 0
+		if !isTooWindy {
+			ws += 1
+		}
+		// deduct points for bad wind
+		if wind > 20 {
+			ws -= 1
+		}
+		if wind > 25 {
+			ws = -1
+		}
+
+		cs := 0
+		if !isTooCloudy {
+			cs += 1
+		}
+		// deduct points for not enough clouds when hot
+		if temp > maxBound {
+			if cloud < 30 {
+				cs -= 1
+			}
+		}
+
+		ww := 0
+		// deduct an extra point for it being too hot
+		if temp > 85 {
+			ww -= 1
+		}
+		if temp > 95 {
+			ww -= 1
+		}
+
+		// 3 points for being hot + 1 for not too windy + 1 for not too cloudy
+		v = 3 + ws + cs + ww
+	}
+
+	return v
+}
+
 func (c *Client) storeData(w weather, z string) error {
 	a := c.InfluxClient.WriteAPIBlocking(c.C.Influx.Org, c.C.Influx.Bucket)
 
 	p := influxdb2.NewPoint("stat",
 		map[string]string{"zip": z},
-		map[string]interface{}{"clouds": w.clouds, "temp": w.temp, "wind_speed": w.windSpeed, "weather_id": w.weatherIDs[0]},
+		map[string]interface{}{"clouds": w.clouds, "temp": w.temp, "wind_speed": w.windSpeed, "weather_id": w.weatherIDs[0], "weather_score": calculatePleasantness(w.temp, w.windSpeed, w.clouds)},
 		time.Now(),
 	)
 
