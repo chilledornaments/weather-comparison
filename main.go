@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/viper"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -297,18 +298,34 @@ func main() {
 	conf := parseConfig()
 	c, _ := newClient(&conf)
 
-	c.newOWMClient()
-	c.newInfluxClient(&conf)
+	if err := c.newOWMClient(); err != nil {
+		panic(err)
+	}
+
+	if err := c.newInfluxClient(&conf); err != nil {
+		panic(err)
+	}
+
+	wg := sync.WaitGroup{}
 
 	for _, z := range conf.ZipCodes {
-		w, err := c.getWeatherForZip(z)
-		if err != nil {
-			panic(err)
-		}
-		if err = c.storeData(w, z); err != nil {
-			fmt.Println("error writing to influx - ", err.Error())
-		} else {
-			fmt.Println("success for ", z)
-		}
+		wg.Add(1)
+
+		go func() {
+			w, err := c.getWeatherForZip(z)
+			if err != nil {
+				fmt.Println("error getting weather for zip - ", err.Error())
+				panic(err)
+			}
+			if err = c.storeData(w, z); err != nil {
+				fmt.Println("error writing to influx - ", err.Error())
+			} else {
+				fmt.Println("success for ", z)
+			}
+		}()
+
+		wg.Done()
 	}
+
+	wg.Wait()
 }
