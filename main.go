@@ -111,9 +111,8 @@ func (c *Client) getWeatherForZip(zip string) (weather, error) {
 	return r, nil
 }
 
-func calculatePleasantness(temp float64, wind float64, cloud int) int {
+func calculatePleasantness(temp float64, wind float64, cloud int, z string) int {
 	var v int
-	// TODO if this logic doesn't work, change the "weather_score" tag to "weather_score_v2"
 
 	// these variable names are awful
 	minBound := 40.0
@@ -163,7 +162,7 @@ func calculatePleasantness(temp float64, wind float64, cloud int) int {
 			ws -= 1
 		}
 		if wind > 20 {
-			ws = -1
+			ws -= 1
 		}
 
 		cs := 0
@@ -171,7 +170,8 @@ func calculatePleasantness(temp float64, wind float64, cloud int) int {
 			cs += 1
 		}
 		// deduct points for too cloudy when it's cold
-		if temp < minBound {
+		if temp < 50 {
+
 			if cloud > 60 {
 				cs -= 1
 			}
@@ -182,8 +182,8 @@ func calculatePleasantness(temp float64, wind float64, cloud int) int {
 			ww += 2
 		}
 
-		// 5 points for being in between + 1 for not too windy + 1 for not too cloudy
-		v = 5 + ws + cs + 22
+		// 5 points for being in between
+		v = 5 + ws + cs + ww
 	} else if temp < minBound {
 		// cold day logic
 		if cloud > cloudOnColdDayMax {
@@ -207,7 +207,7 @@ func calculatePleasantness(temp float64, wind float64, cloud int) int {
 			ws -= 1
 		}
 		if wind > 20 {
-			ws = -1
+			ws -= 1
 		}
 
 		cs := 0
@@ -250,7 +250,7 @@ func calculatePleasantness(temp float64, wind float64, cloud int) int {
 			ws -= 1
 		}
 		if wind > 25 {
-			ws = -1
+			ws -= 1
 		}
 
 		cs := 0
@@ -277,6 +277,9 @@ func calculatePleasantness(temp float64, wind float64, cloud int) int {
 		v = 3 + ws + cs + ww
 	}
 
+	// debugging
+	fmt.Printf("%s: cloud=%d wind=%f temp=%f score=%d\n", z, cloud, wind, temp, v)
+
 	return v
 }
 
@@ -285,7 +288,7 @@ func (c *Client) storeData(w weather, z string) error {
 
 	p := influxdb2.NewPoint("stat",
 		map[string]string{"zip": z},
-		map[string]interface{}{"clouds": w.clouds, "temp": w.temp, "wind_speed": w.windSpeed, "weather_id": w.weatherIDs[0], "weather_score": calculatePleasantness(w.temp, w.windSpeed, w.clouds)},
+		map[string]interface{}{"clouds": w.clouds, "temp": w.temp, "wind_speed": w.windSpeed, "weather_id": w.weatherIDs[0], "weather_score_v2": calculatePleasantness(w.temp, w.windSpeed, w.clouds, z)},
 		time.Now(),
 	)
 
@@ -311,21 +314,19 @@ func main() {
 	for _, z := range conf.ZipCodes {
 		wg.Add(1)
 
-		go func() {
-			w, err := c.getWeatherForZip(z)
+		go func(zz string) {
+			w, err := c.getWeatherForZip(zz)
 			if err != nil {
 				fmt.Println("error getting weather for zip - ", err.Error())
 				panic(err)
 			}
-			if err = c.storeData(w, z); err != nil {
+			if err = c.storeData(w, zz); err != nil {
 				fmt.Println("error writing to influx - ", err.Error())
 			} else {
-				fmt.Println("success for ", z)
+				fmt.Println("success for ", zz)
 			}
-		}()
-
-		wg.Done()
+			wg.Done()
+		}(z)
 	}
-
 	wg.Wait()
 }
