@@ -32,7 +32,27 @@ func Test_parseConfig(t *testing.T) {
 		}
 
 	})
+}
 
+func newTestRunner(t *testing.T) {
+	t.Helper()
+
+	logger := newLogger(true)
+
+	r := Runner{
+		C:            Config{},
+		W:            nil,
+		Logger:       *logger,
+		HttpClient:   nil,
+		InfluxClient: nil,
+	}
+}
+
+type influxSpy struct {
+}
+
+func (s *influxSpy) Ping(ctx context.Context) (bool, error) {
+	return true, nil
 }
 
 func generateConfig(t *testing.T) {
