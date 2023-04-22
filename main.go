@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
 	owm "github.com/briandowns/openweathermap"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"net/http"
 	"os"
@@ -21,6 +21,7 @@ type Client struct {
 	W            *owm.CurrentWeatherData
 	HttpClient   *http.Client
 	InfluxClient influxdb2.Client
+	Logger       *log.Logger
 }
 
 type Config struct {
@@ -32,6 +33,7 @@ type Config struct {
 		Org    string `mapstructure:"org"`
 		URL    string `mapstructure:"url"`
 	} `mapstructure:"influx"`
+	Debug bool `mapstructure:"debug"`
 }
 
 type weather struct {
@@ -41,6 +43,25 @@ type weather struct {
 	windSpeed  float64
 }
 
+func newLogger(debug bool) *log.Logger {
+	l := log.New()
+
+	l.SetFormatter(&log.TextFormatter{
+		DisableColors: true,
+		FullTimestamp: true,
+	})
+
+	l.SetOutput(os.Stdout)
+
+	// Only log the warning severity or above.
+	l.SetLevel(log.InfoLevel)
+
+	if debug {
+		l.SetLevel(log.DebugLevel)
+	}
+
+	return l
+}
 func parseConfig() Config {
 	o := os.Getenv("WC_CONFIG_FILE_NAME")
 	if o == "" {
@@ -87,7 +108,7 @@ func (c *Client) storeData(w weather, z string) error {
 
 	p := influxdb2.NewPoint("stat",
 		map[string]string{"zip": z},
-		map[string]interface{}{"clouds": w.clouds, "temp": w.temp, "wind_speed": w.windSpeed, "weather_id": w.weatherIDs[0], "weather_score_v2": calculateWeatherScore(w.temp, w.windSpeed, w.clouds, z)},
+		map[string]interface{}{"clouds": w.clouds, "temp": w.temp, "wind_speed": w.windSpeed, "weather_id": w.weatherIDs[0], "weather_score_v3": calculateWeatherScore(w.temp, w.windSpeed, w.clouds, z, c.Logger)},
 		time.Now(),
 	)
 
@@ -116,13 +137,13 @@ func main() {
 		go func(zz string) {
 			w, err := c.getWeatherForZip(zz)
 			if err != nil {
-				fmt.Println("error getting weather for zip - ", err.Error())
+				c.Logger.WithError(err).WithField("zip", zz).Error("error getting weather for zip")
 			} else {
 				// only run this logic if we've retrieved weather data
 				if err = c.storeData(w, zz); err != nil {
-					fmt.Println("error writing to influx - ", err.Error())
+					c.Logger.WithError(err).WithField("zip", zz).Error("error writing to influx")
 				} else {
-					fmt.Println("success for ", zz)
+					c.Logger.WithField("zip", zz).Info("success")
 				}
 			}
 			wg.Done()

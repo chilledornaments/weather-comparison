@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/briandowns/openweathermap v0.19.0
 	github.com/influxdata/influxdb-client-go/v2 v2.12.3
+	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/viper v1.15.0
 )
 

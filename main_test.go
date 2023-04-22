@@ -24,8 +24,9 @@ func Test_parseConfig(t *testing.T) {
 		var want Config
 
 		want.ZipCodes = []string{"80303", "80404"}
-		want.Database.Host = "foo"
 		want.OWMApiKey = "hello"
+		want.Influx.Token = "xxx"
+		want.Debug = true
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("parseConfig() = %v, want %v", got, want)
 		}
@@ -40,14 +41,13 @@ func generateConfig(t *testing.T) {
 	s := `zip_codes:
   - "80303"
   - "80404"
-db:
-  host: "foo"
 owm_api_key: "hello"
 influx:
   token: "xxx"
   org: ""
   bucket: ""
-  url: ""`
+  url: ""
+debug: true`
 
 	fh, err := os.Create(testConfigFileName)
 

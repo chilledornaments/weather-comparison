@@ -12,6 +12,8 @@ func newClient(c *Config) (*Client, error) {
 	cc.C = *c
 	cc.HttpClient = http.DefaultClient
 
+	cc.Logger = newLogger(c.Debug)
+
 	return &cc, nil
 }
 
