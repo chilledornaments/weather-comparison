@@ -6,8 +6,8 @@ import (
 	"net/http"
 )
 
-func newClient(c *Config) (*Client, error) {
-	var cc Client
+func newClient(c *Config) (*Runner, error) {
+	var cc Runner
 
 	cc.C = *c
 	cc.HttpClient = http.DefaultClient
@@ -17,7 +17,7 @@ func newClient(c *Config) (*Client, error) {
 	return &cc, nil
 }
 
-func (c *Client) newOWMClient() error {
+func (c *Runner) newOWMClient() error {
 	w, err := owm.NewCurrent("F", "EN", c.C.OWMApiKey, owm.WithHttpClient(c.HttpClient))
 
 	if err != nil {
@@ -29,7 +29,7 @@ func (c *Client) newOWMClient() error {
 	return nil
 }
 
-func (c *Client) newInfluxClient(co *Config) error {
+func (c *Runner) newInfluxClient(co *Config) error {
 	c.InfluxClient = influxdb2.NewClient(co.Influx.URL, co.Influx.Token)
 	return nil
 }

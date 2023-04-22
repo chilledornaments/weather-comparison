@@ -16,7 +16,7 @@ const (
 	configFileName = "weather_comparison.yaml"
 )
 
-type Client struct {
+type Runner struct {
 	C            Config
 	W            *owm.CurrentWeatherData
 	HttpClient   *http.Client
@@ -85,7 +85,7 @@ func parseConfig() Config {
 	return c
 }
 
-func (c *Client) getWeatherForZip(zip string) (weather, error) {
+func (c *Runner) getWeatherForZip(zip string) (weather, error) {
 	var r weather
 
 	err := c.W.CurrentByZipcode(zip, "US")
@@ -103,7 +103,7 @@ func (c *Client) getWeatherForZip(zip string) (weather, error) {
 	return r, nil
 }
 
-func (c *Client) storeData(w weather, z string) error {
+func (c *Runner) storeData(w weather, z string) error {
 	a := c.InfluxClient.WriteAPIBlocking(c.C.Influx.Org, c.C.Influx.Bucket)
 
 	p := influxdb2.NewPoint("stat",
