@@ -1,6 +1,6 @@
 # weather-comparison
 
-This silly project to gather long(ish)term data on weather across different areas. I want to spend some time in different parts of the country, and weather is an important factor.
+This is silly project to gather long(ish)term data on weather across different areas. I want to spend some time in different parts of the country, and weather is an important factor.
 
 Because I'm lazy, I've put together some basic logic to give each day a rating on a scale of ?-9 (:shrug:).  
 
