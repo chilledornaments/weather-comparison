@@ -41,6 +41,7 @@ type weather struct {
 	weatherIDs []int
 	temp       float64
 	windSpeed  float64
+	humidity   int
 }
 
 func newLogger(debug bool) *log.Logger {
@@ -96,6 +97,8 @@ func (c *Runner) getWeatherForZip(zip string) (weather, error) {
 	r.clouds = c.W.Clouds.All
 	r.temp = c.W.Main.Temp
 	r.windSpeed = c.W.Wind.Speed
+	r.humidity = c.W.Main.Humidity
+
 	for _, i := range c.W.Weather {
 		r.weatherIDs = append(r.weatherIDs, i.ID)
 	}
@@ -108,7 +111,15 @@ func (c *Runner) storeData(w weather, z string) error {
 
 	p := influxdb2.NewPoint("stat",
 		map[string]string{"zip": z},
-		map[string]interface{}{"clouds": w.clouds, "temp": w.temp, "wind_speed": w.windSpeed, "weather_id": w.weatherIDs[0], "weather_score_v3": calculateWeatherScore(w.temp, w.windSpeed, w.clouds, z, c.Logger)},
+		map[string]interface{}{
+			"clouds":           w.clouds,
+			"temp":             w.temp,
+			"wind_speed":       w.windSpeed,
+			"weather_id":       w.weatherIDs[0],
+			"weather_score_v3": calculateWeatherScore(w.temp, w.windSpeed, w.clouds, z, c.Logger),
+			"humidity":         w.humidity,
+		},
+
 		time.Now(),
 	)
 
