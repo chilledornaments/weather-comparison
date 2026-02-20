@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"reflect"
 	"testing"
@@ -32,7 +33,29 @@ func Test_parseConfig(t *testing.T) {
 		}
 
 	})
+}
 
+func newTestRunner(t *testing.T) Runner {
+	t.Helper()
+
+	logger := newLogger(true)
+
+	r := Runner{
+		C:            Config{},
+		W:            nil,
+		Logger:       logger,
+		HttpClient:   nil,
+		InfluxClient: nil,
+	}
+
+	return r
+}
+
+type influxSpy struct {
+}
+
+func (s *influxSpy) Ping(ctx context.Context) (bool, error) {
+	return true, nil
 }
 
 func generateConfig(t *testing.T) {
