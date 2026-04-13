@@ -13,6 +13,8 @@ RUN go build -o /tmp/weather-comparison
 
 FROM debian:13-slim
 
+RUN apt update && apt -y install ca-certificates
+
 LABEL org.opencontainers.image.source=https://github.com/chilledornaments/weather-comparison
 
 RUN mkdir /opt/weather
