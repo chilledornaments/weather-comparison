@@ -1,6 +1,6 @@
 module weather-comparison
 
-go 1.19
+go 1.24
 
 require (
 	github.com/briandowns/openweathermap v0.19.0
